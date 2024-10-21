@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        facebook: {
+                            blue: '#1877f2',
+                            darkBlue: '#166fe5',
+                            lightBlue: '#e7f3ff',
+                            gray: '#f0f2f5',
+                            darkGray: '#18191a',
+                            textDark: '#e4e6eb',
+                            textLight: '#050505',
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-facebook-gray dark:bg-facebook-darkGray text-facebook-textLight dark:text-facebook-textDark transition-colors duration-200">
+    <div class="min-h-screen flex flex-col">
+        <!-- Navbar -->
+        <nav class="bg-white dark:bg-[#242526] shadow-md p-4">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-facebook-blue">Time tracker</h1>
+                <div class="flex items-center space-x-4">
+                    <button id="themeToggle" class="p-2 rounded-full bg-facebook-gray dark:bg-facebook-darkGray">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                    <button id="addEmployeeBtn" class="bg-facebook-blue text-white px-4 py-2 rounded-md font-semibold hover:bg-facebook-darkBlue transition-colors duration-200">Add Employee</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="flex-grow p-6">
+            <div class="max-w-7xl mx-auto bg-white dark:bg-[#242526] rounded-lg shadow-md p-6">
+                <!-- Month and Year Picker -->
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex space-x-4">
+                        <select id="monthPicker" class="border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-[#3a3b3c] text-facebook-textLight dark:text-facebook-textDark">
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+                        <select id="yearPicker" class="border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-[#3a3b3c] text-facebook-textLight dark:text-facebook-textDark">
+                            <!-- Years will be populated dynamically -->
+                        </select>
+                    </div>
+                    <button id="addEntryBtn" class="bg-facebook-blue text-white px-4 py-2 rounded-md font-semibold hover:bg-facebook-darkBlue transition-colors duration-200">Add Entry</button>
+                </div>
+
+                <!-- Employees Summary Table -->
+                <div class="overflow-x-auto mb-8">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-facebook-lightBlue dark:bg-[#3a3b3c]">
+                                <th class="border border-gray-300 dark:border-gray-600 p-2 text-left">Employee</th>
+                                <th class="border border-gray-300 dark:border-gray-600 p-2 text-left">Total Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesSummaryTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Employee Details Table -->
+                <div id="employeeDetailsSection" class="hidden">
+                    <h2 id="selectedEmployeeName" class="text-xl font-bold mb-4"></h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-facebook-lightBlue dark:bg-[#3a3b3c]">
+                                    <th class="border border-gray-300 dark:border-gray-600 p-2 text-left">Date</th>
+                                    <th class="border border-gray-300 dark:border-gray-600 p-2 text-left">Time In</th>
+                                    <th class="border border-gray-300 dark:border-gray-600 p-2 text-left">Time Out</th>
+                                    <th class="border border-gray-300 dark:border-gray-600 p-2 text-left">Total Hours</th>
+                                    <th class="border border-gray-300 dark:border-gray-600 p-2 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeeDetailsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Employee Popup -->
+    <div id="addEmployeePopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white dark:bg-[#242526] p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Add New Employee</h2>
+            <form id="addEmployeeForm" class="space-y-4">
+                <input type="text" id="newEmployeeName" placeholder="Employee Name" required class="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-[#3a3b3c] text-facebook-textLight dark:text-facebook-textDark">
+                <button type="submit" class="w-full bg-facebook-blue text-white px-4 py-2 rounded-md font-semibold hover:bg-facebook-darkBlue transition-colors duration-200">Save Employee</button>
+            </form>
+            <button id="closeEmployeePopupBtn" class="mt-4 text-sm text-facebook-blue hover:underline font-semibold">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Add Entry Popup -->
+    <div id="addEntryPopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white dark:bg-[#242526] p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Add New Entry</h2>
+            <form id="addEntryForm" class="space-y-4">
+                <select id="employeeSelect" required class="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-[#3a3b3c] text-facebook-textLight dark:text-facebook-textDark">
+                    <option value="">Select Employee</option>
+                </select>
+                <input type="datetime-local" id="timeIn" required class="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-[#3a3b3c] text-facebook-textLight dark:text-facebook-textDark">
+                <input type="datetime-local" id="timeOut" required class="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-[#3a3b3c] text-facebook-textLight dark:text-facebook-textDark">
+                <button type="submit" class="w-full bg-facebook-blue text-white px-4 py-2 rounded-md font-semibold hover:bg-facebook-darkBlue transition-colors duration-200">Save Entry</button>
+            </form>
+            <button id="closeEntryPopupBtn" class="mt-4 text-sm text-facebook-blue hover:underline font-semibold">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '$2a$10$2pPl9TwYcFIst5KzUDs/UOkjyAQsPAgohEJffeEf5bC5h2zGAitRi'; // Replace with your actual JSONBin.io API key
+        const BIN_ID = '6715bcdead19ca34f8bbe91c'; // Replace with your actual Bin ID
+
+        const monthPicker = document.getElementById('monthPicker');
+        const yearPicker = document.getElementById('yearPicker');
+        const employeesSummaryTableBody = document.getElementById('employeesSummaryTableBody');
+        const employeeDetailsSection = document.getElementById('employeeDetailsSection');
+        const selectedEmployeeName = document.getElementById('selectedEmployeeName');
+        const employeeDetailsTableBody = document.getElementById('employeeDetailsTableBody');
+        const addEmployeeBtn = document.getElementById('addEmployeeBtn');
+        const addEmployeePopup = document.getElementById('addEmployeePopup');
+        const addEmployeeForm = document.getElementById('addEmployeeForm');
+        const closeEmployeePopupBtn = document.getElementById('closeEmployeePopupBtn');
+        const addEntryBtn = document.getElementById('addEntryBtn');
+        const addEntryPopup = document.getElementById('addEntryPopup');
+        const addEntryForm = document.getElementById('addEntryForm');
+        const closeEntryPopupBtn = document.getElementById('closeEntryPopupBtn');
+        const employeeSelect = document.getElementById('employeeSelect');
+
+        let employees = [];
+        let timeEntries = [];
+
+        function loadData() {
+            fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'GET',
+                headers: {
+                    'X-Master-Key': API_KEY
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                employees = data.record.employees || [];
+                timeEntries = data.record.timeEntries || [];
+                updateEmployeeDropdown();
+                displayEmployeesSummary();
+            })
+            .catch(error => console.error('Error loading data:', error));
+        }
+
+        function saveData() {
+            fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify({ employees, timeEntries })
+            })
+            .then(() => loadData())
+            .catch(error => console.error('Error saving data:', error));
+        }
+
+        function updateEmployeeDropdown() {
+            employeeSelect.innerHTML = '<option value="">Select Employee</option>';
+            employees.forEach(employee => {
+                const option = document.createElement('option');
+                option.value = employee.id;
+                option.textContent = employee.name;
+                employeeSelect.appendChild(option);
+            });
+        }
+
+        function displayEmployeesSummary() {
+            const selectedMonth = parseInt(monthPicker.value);
+            const selectedYear = parseInt(yearPicker.value);
+            employeesSummaryTableBody.innerHTML = '';
+
+            employees.forEach(employee => {
+                const row = document.createElement('tr');
+                const totalMinutes = calculateTotalHours(employee.id, selectedMonth, selectedYear);
+
+                row.innerHTML = `
+                    <td class="border border-gray-300 dark:border-gray-600 p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" onclick="showEmployeeDetails('${employee.id}')">${employee.name}</td>
+                    <td class="border border-gray-300 dark:border-gray-600 p-2">${formatHoursAndMinutes(totalMinutes)}</td>
+                `;
+                employeesSummaryTableBody.appendChild(row);
+            });
+        }
+
+        function calculateTotalHours(employeeId, month, year) {
+            return timeEntries
+                .filter(entry => {
+                    const entryDate = new Date(entry.timeIn);
+                    return entry.employeeId === employeeId &&
+                           entryDate.getMonth() === month &&
+                           entryDate.getFullYear() === year;
+                })
+                .reduce((total, entry) => {
+                    const timeIn = new Date(entry.timeIn);
+                    const timeOut = new Date(entry.timeOut);
+                    const minutes = (timeOut - timeIn) / (1000 * 60) - (entry.adjustedMinutes || 0);
+                    return total + minutes;
+                }, 0);
+        }
+
+        function formatHoursAndMinutes(totalMinutes) {
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = Math.round(totalMinutes % 60);
+            return `${hours}h and ${minutes}m`;
+        }
+
+        function showEmployeeDetails(employeeId) {
+            const employee = employees.find(e => e.id === employeeId);
+            if (!employee) return;
+
+            selectedEmployeeName.textContent = `${employee.name}'s Time Entries`;
+            employeeDetailsSection.classList.remove('hidden');
+            employeeDetailsTableBody.innerHTML = '';
+
+            const selectedMonth = parseInt(monthPicker.value);
+            const selectedYear = parseInt(yearPicker.value);
+
+            const filteredEntries = timeEntries.filter(entry => {
+                const entryDate = new Date(entry.timeIn);
+                return entry.employeeId === employeeId &&
+                       entryDate.getMonth() === selectedMonth &&
+                       entryDate.getFullYear() === selectedYear;
+            });
+
+            filteredEntries.forEach(entry => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-entry-id', entry.id);
+                const timeIn = new Date(entry.timeIn);
+                const timeOut = new Date(entry.timeOut);
+                const totalMinutes = (timeOut - timeIn) / (1000 * 60) - (entry.adjustedMinutes || 0);
+
+                row.innerHTML = `
+                    <td class="border border-gray-300 dark:border-gray-600 p-2">${timeIn.toLocaleDateString()}</td>
+                    <td class="border border-gray-300 dark:border-gray-600 p-2">${timeIn.toLocaleTimeString()}</td>
+                    <td class="border border-gray-300 dark:border-gray-600 p-2">${timeOut.toLocaleTimeString()}</td>
+                    <td class="border border-gray-300 dark:border-gray-600 p-2">${formatHoursAndMinutes(totalMinutes)}</td>
+                    <td class="border border-gray-300 dark:border-gray-600 p-2">
+                        <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300  dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="adjustTime('${entry.id}', 30)">-30m</button>
+                        <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="adjustTime('${entry.id}', 60)">-1h</button>
+                        <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="undoAdjustment('${entry.id}')">Undo</button>
+                    </td>
+                `;
+                employeeDetailsTableBody.appendChild(row);
+            });
+        }
+
+        function adjustTime(entryId, minutesToSubtract) {
+            const entry = timeEntries.find(e => e.id === entryId);
+            if (entry) {
+                const timeIn = new Date(entry.timeIn);
+                const timeOut = new Date(entry.timeOut);
+                const totalMinutes = (timeOut - timeIn) / (1000 * 60);
+                const currentAdjustedMinutes = entry.adjustedMinutes || 0;
+                const newAdjustedMinutes = Math.min(currentAdjustedMinutes + minutesToSubtract, totalMinutes);
+                
+                entry.adjustmentHistory = entry.adjustmentHistory || [];
+                entry.adjustmentHistory.push(currentAdjustedMinutes);
+                entry.adjustedMinutes = newAdjustedMinutes;
+                
+                // Update the displayed total hours
+                const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
+                if (row) {
+                    const totalHoursCell = row.querySelector('td:nth-child(4)');
+                    const newTotalMinutes = totalMinutes - newAdjustedMinutes;
+                    totalHoursCell.textContent = formatHoursAndMinutes(newTotalMinutes);
+                }
+                
+                saveData();
+            }
+        }
+
+        function undoAdjustment(entryId) {
+            const entry = timeEntries.find(e => e.id === entryId);
+            if (entry && entry.adjustmentHistory && entry.adjustmentHistory.length > 0) {
+                entry.adjustedMinutes = entry.adjustmentHistory.pop();
+                
+                // Update the displayed total hours
+                const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
+                if (row) {
+                    const totalHoursCell = row.querySelector('td:nth-child(4)');
+                    const timeIn = new Date(entry.timeIn);
+                    const timeOut = new Date(entry.timeOut);
+                    const totalMinutes = (timeOut - timeIn) / (1000 * 60) - entry.adjustedMinutes;
+                    totalHoursCell.textContent = formatHoursAndMinutes(totalMinutes);
+                }
+                
+                saveData();
+            }
+        }
+
+        addEmployeeBtn.addEventListener('click', () => {
+            addEmployeePopup.classList.remove('hidden');
+        });
+
+        closeEmployeePopupBtn.addEventListener('click', () => {
+            addEmployeePopup.classList.add('hidden');
+            addEmployeeForm.reset();
+        });
+
+        addEmployeeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newEmployeeName = document.getElementById('newEmployeeName').value;
+            const newEmployee = {
+                id: Date.now().toString(),
+                name: newEmployeeName
+            };
+            employees.push(newEmployee);
+            saveData();
+            addEmployeePopup.classList.add('hidden');
+            addEmployeeForm.reset();
+        });
+
+        addEntryBtn.addEventListener('click', () => {
+            addEntryPopup.classList.remove('hidden');
+        });
+
+        closeEntryPopupBtn.addEventListener('click', () => {
+            addEntryPopup.classList.add('hidden');
+            addEntryForm.reset();
+        });
+
+        addEntryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const employeeId = employeeSelect.value;
+            const timeIn = document.getElementById('timeIn').value;
+            const timeOut = document.getElementById('timeOut').value;
+
+            if (!employeeId) {
+                alert('Please select an employee');
+                return;
+            }
+
+            const entry = {
+                id: Date.now().toString(),
+                employeeId,
+                timeIn,
+                timeOut,
+                adjustedMinutes: 0,
+                adjustmentHistory: []
+            };
+
+            timeEntries.push(entry);
+            saveData();
+            addEntryPopup.classList.add('hidden');
+            addEntryForm.reset();
+        });
+
+        monthPicker.addEventListener('change', displayEmployeesSummary);
+        yearPicker.addEventListener('change', displayEmployeesSummary);
+
+        // Populate year picker
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear - 5; year <= currentYear + 5; year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearPicker.appendChild(option);
+        }
+        yearPicker.value = currentYear;
+
+        // Set current month
+        monthPicker.value = new Date().getMonth();
+
+        // Theme toggle functionality
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(newTheme);
+        });
+
+        // Set initial theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setTheme('dark');
+        }
+
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>
