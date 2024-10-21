@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time tracker</title>
+    <title>Time Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -31,7 +32,7 @@
         <!-- Navbar -->
         <nav class="bg-white dark:bg-[#242526] shadow-md p-4">
             <div class="max-w-7xl mx-auto flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-facebook-blue">Time tracker</h1>
+                <h1 class="text-2xl font-bold text-facebook-blue">Time Tracker</h1>
                 <div class="flex items-center space-x-4">
                     <button id="themeToggle" class="p-2 rounded-full bg-facebook-gray dark:bg-facebook-darkGray">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -134,290 +135,351 @@
     </div>
 
     <script>
-        const API_KEY = '$2a$10$2pPl9TwYcFIst5KzUDs/UOkjyAQsPAgohEJffeEf5bC5h2zGAitRi'; // Replace with your actual JSONBin.io API key
-        const BIN_ID = '6715bcdead19ca34f8bbe91c'; // Replace with your actual Bin ID
+          const API_KEY = '$2a$10$2pPl9TwYcFIst5KzUDs/UOkjyAQsPAgohEJffeEf5bC5h2zGAitRi';
+  const BIN_ID = '6715bcdead19ca34f8bbe91c';
 
-        const monthPicker = document.getElementById('monthPicker');
-        const yearPicker = document.getElementById('yearPicker');
-        const employeesSummaryTableBody = document.getElementById('employeesSummaryTableBody');
-        const employeeDetailsSection = document.getElementById('employeeDetailsSection');
-        const selectedEmployeeName = document.getElementById('selectedEmployeeName');
-        const employeeDetailsTableBody = document.getElementById('employeeDetailsTableBody');
-        const addEmployeeBtn = document.getElementById('addEmployeeBtn');
-        const addEmployeePopup = document.getElementById('addEmployeePopup');
-        const addEmployeeForm = document.getElementById('addEmployeeForm');
-        const closeEmployeePopupBtn = document.getElementById('closeEmployeePopupBtn');
-        const addEntryBtn = document.getElementById('addEntryBtn');
-        const addEntryPopup = document.getElementById('addEntryPopup');
-        const addEntryForm = document.getElementById('addEntryForm');
-        const closeEntryPopupBtn = document.getElementById('closeEntryPopupBtn');
-        const employeeSelect = document.getElementById('employeeSelect');
+  const monthPicker = document.getElementById('monthPicker');
+  const yearPicker = document.getElementById('yearPicker');
+  const employeesSummaryTableBody = document.getElementById('employeesSummaryTableBody');
+  const employeeDetailsSection = document.getElementById('employeeDetailsSection');
+  const selectedEmployeeName = document.getElementById('selectedEmployeeName');
+  const employeeDetailsTableBody = document.getElementById('employeeDetailsTableBody');
+  const addEmployeeBtn = document.getElementById('addEmployeeBtn');
+  const addEmployeePopup = document.getElementById('addEmployeePopup');
+  const addEmployeeForm = document.getElementById('addEmployeeForm');
+  const closeEmployeePopupBtn = document.getElementById('closeEmployeePopupBtn');
+  const addEntryBtn = document.getElementById('addEntryBtn');
+  const addEntryPopup = document.getElementById('addEntryPopup');
+  const addEntryForm = document.getElementById('addEntryForm');
+  const closeEntryPopupBtn = document.getElementById('closeEntryPopupBtn');
+  const employeeSelect = document.getElementById('employeeSelect');
 
-        let employees = [];
-        let timeEntries = [];
+  let employees = [];
+  let timeEntries = [];
 
-        function loadData() {
-            fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-                method: 'GET',
-                headers: {
-                    'X-Master-Key': API_KEY
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                employees = data.record.employees || [];
-                timeEntries = data.record.timeEntries || [];
-                updateEmployeeDropdown();
-                displayEmployeesSummary();
-            })
-            .catch(error => console.error('Error loading data:', error));
+  function loadData() {
+    fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method: 'GET',
+      headers: {
+        'X-Master-Key': API_KEY
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      employees = data.record.employees || [];
+      timeEntries = data.record.timeEntries || [];
+      updateEmployeeDropdown();
+      displayEmployeesSummary();
+    })
+    .catch(error => console.error('Error loading data:', error));
+  }
+
+  function saveData() {
+    fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': API_KEY
+      },
+      body: JSON.stringify({ employees, timeEntries })
+    })
+    .then(() => loadData())
+    .catch(error => console.error('Error saving data:', error));
+  }
+
+  function updateEmployeeDropdown() {
+    employeeSelect.innerHTML = '<option value="">Select Employee</option>';
+    employees.forEach(employee => {
+      const option = document.createElement('option');
+      option.value = employee.id;
+      option.textContent = employee.name;
+      employeeSelect.appendChild(option);
+    });
+  }
+
+  function displayEmployeesSummary() {
+    const selectedMonth = parseInt(monthPicker.value);
+    const selectedYear = parseInt(yearPicker.value);
+    employeesSummaryTableBody.innerHTML = '';
+
+    employees.forEach(employee => {
+      const row = document.createElement('tr');
+      const totalMinutes = calculateTotalHours(employee.id, selectedMonth, selectedYear);
+
+      row.innerHTML = `
+        <td class="border border-gray-300 dark:border-gray-600 p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" onclick="showEmployeeDetails('${employee.id}')">${employee.name}</td>
+        <td class="border border-gray-300 dark:border-gray-600 p-2">${formatHoursAndMinutes(totalMinutes)}</td>
+      `;
+      employeesSummaryTableBody.appendChild(row);
+    });
+  }
+
+  function calculateTotalHours(employeeId, month, year) {
+    return timeEntries
+      .filter(entry => {
+        const entryDate = new Date(entry.timeIn);
+        return entry.employeeId === employeeId &&
+               entryDate.getMonth() === month &&
+               entryDate.getFullYear() === year;
+      })
+      .reduce((total, entry) => {
+        const timeIn = new Date(entry.timeIn);
+        const timeOut = new Date(entry.timeOut);
+        const minutes = (timeOut - timeIn) / (1000 * 60) - (entry.adjustedMinutes || 0);
+        return total + minutes;
+      }, 0);
+  }
+
+  function formatHoursAndMinutes(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.round(totalMinutes % 60);
+    return `${hours}h and ${minutes}m`;
+  }
+
+  function showEmployeeDetails(employeeId) {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee) return;
+
+    selectedEmployeeName.textContent = `${employee.name}'s Time Entries`;
+    employeeDetailsSection.classList.remove('hidden');
+    employeeDetailsTableBody.innerHTML = '';
+
+    const selectedMonth = parseInt(monthPicker.value);
+    const selectedYear = parseInt(yearPicker.value);
+
+    const filteredEntries = timeEntries.filter(entry => {
+      const entryDate = new Date(entry.timeIn);
+      return entry.employeeId === employeeId &&
+             entryDate.getMonth() === selectedMonth &&
+             entryDate.getFullYear() === selectedYear;
+    });
+
+    filteredEntries.forEach(entry => {
+      const row = document.createElement('tr');
+      row.setAttribute('data-entry-id', entry.id);
+      const timeIn = new Date(entry.timeIn);
+      const timeOut = new Date(entry.timeOut);
+      const totalMinutes = (timeOut - timeIn) / (1000 * 60) - (entry.adjustedMinutes || 0);
+
+      row.innerHTML = `
+        <td class="border border-gray-300 dark:border-gray-600 p-2">${timeIn.toLocaleDateString()}</td>
+        <td class="border border-gray-300 dark:border-gray-600 p-2">${timeIn.toLocaleTimeString()}</td>
+        <td class="border border-gray-300 dark:border-gray-600 p-2">${timeOut.toLocaleTimeString()}</td>
+        <td class="border border-gray-300 dark:border-gray-600 p-2">${formatHoursAndMinutes(totalMinutes)}</td>
+        <td class="border border-gray-300 dark:border-gray-600 p-2">
+          <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="adjustTime('${entry.id}', 30)">-30m</button>
+          <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="adjustTime('${entry.id}', 60)">-1hour</button>
+          <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="undoAdjustment('${entry.id}')">Undo</button>
+          <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="deleteEntry('${entry.id}')">Delete</button>
+        </td>
+      `;
+      employeeDetailsTableBody.appendChild(row);
+    });
+  }
+
+  function adjustTime(entryId, minutesToSubtract) {
+    const entry = timeEntries.find(e => e.id === entryId);
+    if (entry) {
+      const timeIn = new Date(entry.timeIn);
+      const timeOut = new Date(entry.timeOut);
+      const totalMinutes = (timeOut - timeIn) / (1000 * 60);
+      const currentAdjustedMinutes = entry.adjustedMinutes || 0;
+      const newAdjustedMinutes = Math.min(currentAdjustedMinutes + minutesToSubtract, totalMinutes);
+      
+      entry.adjustmentHistory = entry.adjustmentHistory || [];
+      entry.adjustmentHistory.push(currentAdjustedMinutes);
+      entry.adjustedMinutes = newAdjustedMinutes;
+      
+      const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
+      if (row) {
+        const totalHoursCell = row.querySelector('td:nth-child(4)');
+        const newTotalMinutes = totalMinutes - newAdjustedMinutes;
+        totalHoursCell.textContent = formatHoursAndMinutes(newTotalMinutes);
+      }
+      
+      saveData();
+
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        title: `Adjusted time by -${minutesToSubtract} minutes`,
+        showConfirmButton: false,
+        timer: 3000
+      });
+    }
+  }
+
+  function undoAdjustment(entryId) {
+    const entry = timeEntries.find(e => e.id === entryId);
+    if (entry && entry.adjustmentHistory && entry.adjustmentHistory.length > 0) {
+      const previousAdjustment = entry.adjustedMinutes;
+      entry.adjustedMinutes = entry.adjustmentHistory.pop();
+      
+      const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
+      if (row) {
+        const totalHoursCell = row.querySelector('td:nth-child(4)');
+        const timeIn = new Date(entry.timeIn);
+        const timeOut = new Date(entry.timeOut);
+        const totalMinutes = (timeOut - timeIn) / (1000 * 60) - entry.adjustedMinutes;
+        totalHoursCell.textContent = formatHoursAndMinutes(totalMinutes);
+      }
+      
+      saveData();
+
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        title: `Undo: Restored ${previousAdjustment - entry.adjustedMinutes} minutes`,
+        showConfirmButton: false,
+        timer: 3000
+      });
+    }
+  }
+
+  function deleteEntry(entryId) {
+    Swal.fire({
+      title: 'Are you sure?',
+      toast: "Yes",
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#166fe5',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const index = timeEntries.findIndex(entry => entry.id === entryId);
+        if (index !== -1) {
+          timeEntries.splice(index, 1);
+          saveData();
+          const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
+          if (row) {
+            row.remove();
+          }
+          Swal.fire(
+            'Deleted!',
+            'The entry has been deleted.',
+            'success'
+          );
         }
+      }
+    });
+  }
 
-        function saveData() {
-            fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': API_KEY
-                },
-                body: JSON.stringify({ employees, timeEntries })
-            })
-            .then(() => loadData())
-            .catch(error => console.error('Error saving data:', error));
-        }
+  addEmployeeBtn.addEventListener('click', () => {
+    addEmployeePopup.classList.remove('hidden');
+  });
 
-        function updateEmployeeDropdown() {
-            employeeSelect.innerHTML = '<option value="">Select Employee</option>';
-            employees.forEach(employee => {
-                const option = document.createElement('option');
-                option.value = employee.id;
-                option.textContent = employee.name;
-                employeeSelect.appendChild(option);
-            });
-        }
+  closeEmployeePopupBtn.addEventListener('click', () => {
+    addEmployeePopup.classList.add('hidden');
+    addEmployeeForm.reset();
+  });
 
-        function displayEmployeesSummary() {
-            const selectedMonth = parseInt(monthPicker.value);
-            const selectedYear = parseInt(yearPicker.value);
-            employeesSummaryTableBody.innerHTML = '';
+  addEmployeeForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const newEmployeeName = document.getElementById('newEmployeeName').value;
+    const newEmployee = {
+      id: Date.now().toString(),
+      name: newEmployeeName
+    };
+    employees.push(newEmployee);
+    saveData();
+    addEmployeePopup.classList.add('hidden');
+    addEmployeeForm.reset();
 
-            employees.forEach(employee => {
-                const row = document.createElement('tr');
-                const totalMinutes = calculateTotalHours(employee.id, selectedMonth, selectedYear);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Employee added successfully',
+      showConfirmButton: false,
+      timer: 3000
+    });
+  });
 
-                row.innerHTML = `
-                    <td class="border border-gray-300 dark:border-gray-600 p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" onclick="showEmployeeDetails('${employee.id}')">${employee.name}</td>
-                    <td class="border border-gray-300 dark:border-gray-600 p-2">${formatHoursAndMinutes(totalMinutes)}</td>
-                `;
-                employeesSummaryTableBody.appendChild(row);
-            });
-        }
+  addEntryBtn.addEventListener('click', () => {
+    addEntryPopup.classList.remove('hidden');
+  });
 
-        function calculateTotalHours(employeeId, month, year) {
-            return timeEntries
-                .filter(entry => {
-                    const entryDate = new Date(entry.timeIn);
-                    return entry.employeeId === employeeId &&
-                           entryDate.getMonth() === month &&
-                           entryDate.getFullYear() === year;
-                })
-                .reduce((total, entry) => {
-                    const timeIn = new Date(entry.timeIn);
-                    const timeOut = new Date(entry.timeOut);
-                    const minutes = (timeOut - timeIn) / (1000 * 60) - (entry.adjustedMinutes || 0);
-                    return total + minutes;
-                }, 0);
-        }
+  closeEntryPopupBtn.addEventListener('click', () => {
+    addEntryPopup.classList.add('hidden');
+    addEntryForm.reset();
+  });
 
-        function formatHoursAndMinutes(totalMinutes) {
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = Math.round(totalMinutes % 60);
-            return `${hours}h and ${minutes}m`;
-        }
+  addEntryForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const employeeId = employeeSelect.value;
+    const timeIn = document.getElementById('timeIn').value;
+    const timeOut = document.getElementById('timeOut').value;
 
-        function showEmployeeDetails(employeeId) {
-            const employee = employees.find(e => e.id === employeeId);
-            if (!employee) return;
+    if (!employeeId) {
+      alert('Please select an employee');
+      return;
+    }
 
-            selectedEmployeeName.textContent = `${employee.name}'s Time Entries`;
-            employeeDetailsSection.classList.remove('hidden');
-            employeeDetailsTableBody.innerHTML = '';
+    const entry = {
+      id: Date.now().toString(),
+      employeeId,
+      timeIn,
+      timeOut,
+      adjustedMinutes: 0,
+      adjustmentHistory: []
+    };
 
-            const selectedMonth = parseInt(monthPicker.value);
-            const selectedYear = parseInt(yearPicker.value);
+    timeEntries.push(entry);
+    saveData();
+    addEntryPopup.classList.add('hidden');
+    addEntryForm.reset();
 
-            const filteredEntries = timeEntries.filter(entry => {
-                const entryDate = new Date(entry.timeIn);
-                return entry.employeeId === employeeId &&
-                       entryDate.getMonth() === selectedMonth &&
-                       entryDate.getFullYear() === selectedYear;
-            });
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'New entry added successfully',
+      showConfirmButton: false,
+      timer: 3000
+    });
+  });
 
-            filteredEntries.forEach(entry => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-entry-id', entry.id);
-                const timeIn = new Date(entry.timeIn);
-                const timeOut = new Date(entry.timeOut);
-                const totalMinutes = (timeOut - timeIn) / (1000 * 60) - (entry.adjustedMinutes || 0);
+  monthPicker.addEventListener('change', displayEmployeesSummary);
+  yearPicker.addEventListener('change', displayEmployeesSummary);
 
-                row.innerHTML = `
-                    <td class="border border-gray-300 dark:border-gray-600 p-2">${timeIn.toLocaleDateString()}</td>
-                    <td class="border border-gray-300 dark:border-gray-600 p-2">${timeIn.toLocaleTimeString()}</td>
-                    <td class="border border-gray-300 dark:border-gray-600 p-2">${timeOut.toLocaleTimeString()}</td>
-                    <td class="border border-gray-300 dark:border-gray-600 p-2">${formatHoursAndMinutes(totalMinutes)}</td>
-                    <td class="border border-gray-300 dark:border-gray-600 p-2">
-                        <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300  dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="adjustTime('${entry.id}', 30)">-30m</button>
-                        <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md mr-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="adjustTime('${entry.id}', 60)">-1h</button>
-                        <button class="bg-gray-200 text-facebook-textLight dark:bg-gray-700 dark:text-facebook-textDark px-3 py-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 font-semibold" onclick="undoAdjustment('${entry.id}')">Undo</button>
-                    </td>
-                `;
-                employeeDetailsTableBody.appendChild(row);
-            });
-        }
+  const currentYear = new Date().getFullYear();
+  for (let year = currentYear - 5; year <= currentYear + 5; year++) {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    yearPicker.appendChild(option);
+  }
+  yearPicker.value = currentYear;
 
-        function adjustTime(entryId, minutesToSubtract) {
-            const entry = timeEntries.find(e => e.id === entryId);
-            if (entry) {
-                const timeIn = new Date(entry.timeIn);
-                const timeOut = new Date(entry.timeOut);
-                const totalMinutes = (timeOut - timeIn) / (1000 * 60);
-                const currentAdjustedMinutes = entry.adjustedMinutes || 0;
-                const newAdjustedMinutes = Math.min(currentAdjustedMinutes + minutesToSubtract, totalMinutes);
-                
-                entry.adjustmentHistory = entry.adjustmentHistory || [];
-                entry.adjustmentHistory.push(currentAdjustedMinutes);
-                entry.adjustedMinutes = newAdjustedMinutes;
-                
-                // Update the displayed total hours
-                const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
-                if (row) {
-                    const totalHoursCell = row.querySelector('td:nth-child(4)');
-                    const newTotalMinutes = totalMinutes - newAdjustedMinutes;
-                    totalHoursCell.textContent = formatHoursAndMinutes(newTotalMinutes);
-                }
-                
-                saveData();
-            }
-        }
+  monthPicker.value = new Date().getMonth();
 
-        function undoAdjustment(entryId) {
-            const entry = timeEntries.find(e => e.id === entryId);
-            if (entry && entry.adjustmentHistory && entry.adjustmentHistory.length > 0) {
-                entry.adjustedMinutes = entry.adjustmentHistory.pop();
-                
-                // Update the displayed total hours
-                const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
-                if (row) {
-                    const totalHoursCell = row.querySelector('td:nth-child(4)');
-                    const timeIn = new Date(entry.timeIn);
-                    const timeOut = new Date(entry.timeOut);
-                    const totalMinutes = (timeOut - timeIn) / (1000 * 60) - entry.adjustedMinutes;
-                    totalHoursCell.textContent = formatHoursAndMinutes(totalMinutes);
-                }
-                
-                saveData();
-            }
-        }
+  function setTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }
 
-        addEmployeeBtn.addEventListener('click', () => {
-            addEmployeePopup.classList.remove('hidden');
-        });
+  themeToggle.addEventListener('click', () => {
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+  });
 
-        closeEmployeePopupBtn.addEventListener('click', () => {
-            addEmployeePopup.classList.add('hidden');
-            addEmployeeForm.reset();
-        });
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    setTheme(savedTheme);
+  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    setTheme('dark');
+  }
 
-        addEmployeeForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const newEmployeeName = document.getElementById('newEmployeeName').value;
-            const newEmployee = {
-                id: Date.now().toString(),
-                name: newEmployeeName
-            };
-            employees.push(newEmployee);
-            saveData();
-            addEmployeePopup.classList.add('hidden');
-            addEmployeeForm.reset();
-        });
-
-        addEntryBtn.addEventListener('click', () => {
-            addEntryPopup.classList.remove('hidden');
-        });
-
-        closeEntryPopupBtn.addEventListener('click', () => {
-            addEntryPopup.classList.add('hidden');
-            addEntryForm.reset();
-        });
-
-        addEntryForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const employeeId = employeeSelect.value;
-            const timeIn = document.getElementById('timeIn').value;
-            const timeOut = document.getElementById('timeOut').value;
-
-            if (!employeeId) {
-                alert('Please select an employee');
-                return;
-            }
-
-            const entry = {
-                id: Date.now().toString(),
-                employeeId,
-                timeIn,
-                timeOut,
-                adjustedMinutes: 0,
-                adjustmentHistory: []
-            };
-
-            timeEntries.push(entry);
-            saveData();
-            addEntryPopup.classList.add('hidden');
-            addEntryForm.reset();
-        });
-
-        monthPicker.addEventListener('change', displayEmployeesSummary);
-        yearPicker.addEventListener('change', displayEmployeesSummary);
-
-        // Populate year picker
-        const currentYear = new Date().getFullYear();
-        for (let year = currentYear - 5; year <= currentYear + 5; year++) {
-            const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            yearPicker.appendChild(option);
-        }
-        yearPicker.value = currentYear;
-
-        // Set current month
-        monthPicker.value = new Date().getMonth();
-
-        // Theme toggle functionality
-        function setTheme(theme) {
-            if (theme === 'dark') {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-            localStorage.setItem('theme', theme);
-        }
-
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            setTheme(newTheme);
-        });
-
-        // Set initial theme
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            setTheme(savedTheme);
-        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            setTheme('dark');
-        }
-
-        // Load data on page load
-        loadData();
+  loadData();
     </script>
 </body>
 </html>
